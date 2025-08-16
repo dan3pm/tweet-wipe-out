@@ -2,26 +2,23 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Shield, Trash2, Twitter, X } from "lucide-react";
 import heroIllustration from "@/assets/hero-illustration.jpg";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const handleConnect = async () => {
     try {
       console.log("Iniciating Twitter OAuth...");
       
-      const response = await fetch('/functions/v1/twitter-auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const { data, error } = await supabase.functions.invoke('twitter-auth', {
+        body: {}
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to initiate OAuth');
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to initiate OAuth');
       }
 
-      const data = await response.json();
-      
-      if (data.authUrl && data.sessionId) {
+      if (data?.authUrl && data?.sessionId) {
         // Store session ID in localStorage
         localStorage.setItem('tweetwipe_session', data.sessionId);
         
@@ -30,9 +27,9 @@ const Index = () => {
       } else {
         throw new Error('Invalid response from server');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initiating OAuth:', error);
-      alert('Erro ao conectar com o X. Tente novamente.');
+      alert(`Erro ao conectar com o X: ${error.message || 'Tente novamente.'}`);
     }
   };
 

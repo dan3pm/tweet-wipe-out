@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Shield, X, ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Confirm = () => {
   const navigate = useNavigate();
@@ -27,25 +28,20 @@ const Confirm = () => {
 
       console.log('Processing OAuth callback...');
 
-      const response = await fetch('/functions/v1/twitter-callback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('twitter-callback', {
+        body: {
           oauthToken,
           oauthVerifier,
           sessionId
-        }),
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to process OAuth callback');
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to process OAuth callback');
       }
 
-      const data = await response.json();
-      
-      if (data.user) {
+      if (data?.user) {
         setUser(data.user);
       } else {
         throw new Error('Failed to get user data');
@@ -68,23 +64,20 @@ const Confirm = () => {
 
       console.log('Starting tweet processing...');
 
-      const response = await fetch('/functions/v1/twitter-process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sessionId }),
+      const { data, error } = await supabase.functions.invoke('twitter-process', {
+        body: { sessionId }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to start processing');
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to start processing');
       }
 
       // Redirect to processing page
       navigate('/processing');
     } catch (error: any) {
       console.error('Error starting processing:', error);
-      alert('Erro ao iniciar o processamento. Tente novamente.');
+      alert(`Erro ao iniciar o processamento: ${error.message || 'Tente novamente.'}`);
     }
   };
 
