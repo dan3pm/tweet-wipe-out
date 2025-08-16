@@ -3,25 +3,24 @@ import { Card } from "@/components/ui/card";
 import { Shield, Trash2, Twitter, X } from "lucide-react";
 import heroIllustration from "@/assets/hero-illustration.jpg";
 import { supabase } from "@/integrations/supabase/client";
-
 const Index = () => {
   const handleConnect = async () => {
     try {
       console.log("Iniciating Twitter OAuth...");
-      
-      const { data, error } = await supabase.functions.invoke('twitter-auth', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('twitter-auth', {
         body: {}
       });
-
       if (error) {
         console.error('Supabase function error:', error);
         throw new Error(error.message || 'Failed to initiate OAuth');
       }
-
       if (data?.authUrl && data?.sessionId) {
         // Store session ID in localStorage
         localStorage.setItem('tweetwipe_session', data.sessionId);
-        
+
         // Redirect to Twitter OAuth
         window.location.href = data.authUrl;
       } else {
@@ -32,9 +31,7 @@ const Index = () => {
       alert(`Erro ao conectar com o X: ${error.message || 'Tente novamente.'}`);
     }
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-subtle">
+  return <div className="min-h-screen bg-gradient-subtle">
       {/* Hero Section */}
       <main className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center">
@@ -65,22 +62,11 @@ const Index = () => {
             </div>
 
             {/* Hero Image */}
-            <div className="my-16 animate-scale-in">
-              <img 
-                src={heroIllustration} 
-                alt="Ilustração do TweetWipe - Limpeza de tweets"
-                className="mx-auto max-w-md w-full rounded-2xl shadow-lg"
-              />
-            </div>
+            
 
             {/* CTA Button */}
             <div className="animate-scale-in">
-              <Button 
-                variant="hero" 
-                size="xl" 
-                onClick={handleConnect}
-                className="mb-8"
-              >
+              <Button variant="hero" size="xl" onClick={handleConnect} className="mb-8">
                 <X className="w-5 h-5" />
                 Conectar com o X para Limpar
               </Button>
@@ -138,8 +124,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
