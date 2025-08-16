@@ -6,6 +6,21 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const consumerKey = Deno.env.get('TWITTER_CONSUMER_KEY')!;
 const consumerSecret = Deno.env.get('TWITTER_CONSUMER_SECRET')!;
 
+function validateEnvironmentVariables() {
+  const missing = [];
+  
+  if (!supabaseUrl) missing.push('SUPABASE_URL');
+  if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (!consumerKey || consumerKey.trim() === '') missing.push('TWITTER_CONSUMER_KEY');
+  if (!consumerSecret || consumerSecret.trim() === '') missing.push('TWITTER_CONSUMER_SECRET');
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+  
+  console.log('✓ All environment variables validated successfully');
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const corsHeaders = {
@@ -70,6 +85,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validate environment variables first
+    validateEnvironmentVariables();
+
     const { oauthToken, oauthVerifier, sessionId } = await req.json();
 
     if (!oauthToken || !oauthVerifier || !sessionId) {
