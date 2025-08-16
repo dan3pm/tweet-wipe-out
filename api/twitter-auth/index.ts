@@ -1,52 +1,39 @@
-// FORMATO CORRETO PARA VERCEL
+// /api/twitter-auth/index.ts (VERSÃO DE TESTE)
+
 export default async (req: Request): Promise<Response> => {
+  // A primeira coisa que o código faz é registrar isso.
+  console.log("Função de teste invocada com sucesso!");
+  console.log(`Método da requisição: ${req.method}`);
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      headers: { 
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      }
+    });
   }
-
+  
   try {
-    const requestTokenUrl = 'https://api.twitter.com/oauth/request_token';
-    // O 'origin' vem do cabeçalho da requisição
-    const origin = req.headers.get('origin'); 
-    const callbackUrl = `${origin}/confirm`;
-
-    console.log(`Callback URL gerado: ${callbackUrl}`); // <--- Adicione este log!
-
-    const oauthHeader = await generateOAuthHeader('POST', requestTokenUrl, {
-      oauth_callback: callbackUrl
-    });
+    const responseBody = JSON.stringify({ message: "Endpoint de teste está funcionando!" });
     
-    const response = await fetch(requestTokenUrl, {
-      method: 'POST',
-      headers: { 'Authorization': oauthHeader },
+    return new Response(responseBody, {
+      status: 200,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+       },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Twitter API Error: ${response.status}`, errorText);
-      throw new Error(`Twitter API error: ${response.status} - ${errorText}`);
-    }
-
-    const responseText = await response.text();
-    const params = new URLSearchParams(responseText);
-    const oauthToken = params.get('oauth_token');
-
-    if (!oauthToken) {
-      throw new Error('Failed to get OAuth token from Twitter response');
-    }
-
-    const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
+  } catch (error) {
+    console.error("Erro inesperado na função de teste:", error);
     
-    return new Response(JSON.stringify({ authUrl }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200
-    });
-
-  } catch (error: any) {
-    console.error('Error in twitter-auth function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Erro interno no servidor de teste." }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
     });
   }
 };
