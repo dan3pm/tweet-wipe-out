@@ -4,9 +4,36 @@ import { Shield, Trash2, Twitter, X } from "lucide-react";
 import heroIllustration from "@/assets/hero-illustration.jpg";
 
 const Index = () => {
-  const handleConnect = () => {
-    // TODO: Implementar autenticação OAuth com Twitter/X
-    console.log("Conectar com X para limpar tweets");
+  const handleConnect = async () => {
+    try {
+      console.log("Iniciating Twitter OAuth...");
+      
+      const response = await fetch('/functions/v1/twitter-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to initiate OAuth');
+      }
+
+      const data = await response.json();
+      
+      if (data.authUrl && data.sessionId) {
+        // Store session ID in localStorage
+        localStorage.setItem('tweetwipe_session', data.sessionId);
+        
+        // Redirect to Twitter OAuth
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Error initiating OAuth:', error);
+      alert('Erro ao conectar com o X. Tente novamente.');
+    }
   };
 
   return (

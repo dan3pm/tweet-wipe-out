@@ -1,128 +1,228 @@
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Shield, X, AlertTriangle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Shield, X, ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const Confirm = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // TODO: Substituir por dados reais do usuário após OAuth
-  const mockUser = {
-    name: "João Silva",
-    username: "@joaosilva",
-    profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=mock"
+  useEffect(() => {
+    handleCallback();
+  }, []);
+
+  const handleCallback = async () => {
+    try {
+      const oauthToken = searchParams.get('oauth_token');
+      const oauthVerifier = searchParams.get('oauth_verifier');
+      const sessionId = localStorage.getItem('tweetwipe_session');
+
+      if (!oauthToken || !oauthVerifier || !sessionId) {
+        throw new Error('Missing OAuth parameters');
+      }
+
+      console.log('Processing OAuth callback...');
+
+      const response = await fetch('/functions/v1/twitter-callback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          oauthToken,
+          oauthVerifier,
+          sessionId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process OAuth callback');
+      }
+
+      const data = await response.json();
+      
+      if (data.user) {
+        setUser(data.user);
+      } else {
+        throw new Error('Failed to get user data');
+      }
+    } catch (error: any) {
+      console.error('Error processing callback:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleConfirm = () => {
-    navigate("/processing");
+  const handleConfirm = async () => {
+    try {
+      const sessionId = localStorage.getItem('tweetwipe_session');
+      
+      if (!sessionId) {
+        throw new Error('Missing session ID');
+      }
+
+      console.log('Starting tweet processing...');
+
+      const response = await fetch('/functions/v1/twitter-process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start processing');
+      }
+
+      // Redirect to processing page
+      navigate('/processing');
+    } catch (error: any) {
+      console.error('Error starting processing:', error);
+      alert('Erro ao iniciar o processamento. Tente novamente.');
+    }
   };
 
   const handleCancel = () => {
-    navigate("/");
+    localStorage.removeItem('tweetwipe_session');
+    navigate('/');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle">
+        <main className="container mx-auto px-4 py-16">
+          <div className="max-w-2xl mx-auto">
+            <Card className="p-8 text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+              <p className="text-muted-foreground">Processando autenticação...</p>
+            </Card>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle">
+        <main className="container mx-auto px-4 py-16">
+          <div className="max-w-2xl mx-auto">
+            <Card className="p-8 text-center">
+              <div className="space-y-6">
+                <div className="text-destructive">
+                  <X className="w-12 h-12 mx-auto mb-4" />
+                  <h1 className="text-2xl font-bold mb-2">Erro na Autenticação</h1>
+                  <p className="text-muted-foreground">{error}</p>
+                </div>
+                
+                <Button variant="outline" onClick={handleCancel}>
+                  <ArrowLeft className="w-4 h-4" />
+                  Voltar ao Início
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <main className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">
-          {/* Back Button */}
-          <Button 
-            variant="ghost" 
-            onClick={handleCancel}
-            className="mb-8"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar
-          </Button>
-
           {/* Confirmation Card */}
-          <Card className="p-8 text-center animate-scale-in">
-            <div className="space-y-6">
+          <Card className="p-8 animate-scale-in">
+            <div className="space-y-8">
               {/* User Info */}
-              <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-foreground">
-                  Confirmação de Conta
-                </h1>
-                <p className="text-muted-foreground">
-                  Você está conectado como:
-                </p>
+              <div className="text-center space-y-4">
+                <div className="flex justify-center">
+                  {user?.profileImageUrl ? (
+                    <img 
+                      src={user.profileImageUrl}
+                      alt="Profile"
+                      className="w-16 h-16 rounded-full border-2 border-border"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                      <X className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 
-                <div className="flex items-center justify-center gap-4">
-                  <Avatar className="w-16 h-16">
-                    <AvatarImage src={mockUser.profileImage} alt={mockUser.name} />
-                    <AvatarFallback>
-                      {mockUser.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-foreground">{mockUser.name}</h3>
-                    <p className="text-sm text-muted-foreground">{mockUser.username}</p>
-                  </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground mb-2">
+                    Conectado como @{user?.username}
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Confirme se esta é a conta correta antes de prosseguir.
+                  </p>
                 </div>
               </div>
 
-              {/* Warning Section */}
+              {/* Warning */}
               <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-6">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
-                  <div className="text-left space-y-2">
+                  <Shield className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
+                  <div className="space-y-2">
                     <h3 className="font-semibold text-destructive">
-                      Ação Irreversível
+                      ⚠️ Ação Irreversível
                     </h3>
                     <p className="text-sm text-destructive/80">
-                      Esta ação irá apagar permanentemente seus 3.200 tweets mais recentes. 
-                      Esta operação <strong>não pode ser desfeita</strong>.
+                      Esta ação irá apagar permanentemente seus tweets mais recentes (até 3.200). 
+                      Não será possível recuperá-los depois. Certifique-se de que realmente deseja prosseguir.
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Process Info */}
-              <div className="text-left space-y-3 bg-muted/30 rounded-lg p-4">
-                <h4 className="font-medium text-foreground">O que vai acontecer:</h4>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-twitter rounded-full"></div>
-                    Buscaremos seus tweets mais recentes
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-destructive rounded-full"></div>
-                    Excluiremos até 3.200 tweets
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-success rounded-full"></div>
-                    Você poderá revogar o acesso após o processo
-                  </li>
-                </ul>
+              <div className="bg-twitter/5 border border-twitter/20 rounded-lg p-6">
+                <div className="text-center space-y-2">
+                  <h3 className="font-semibold text-twitter">
+                    O que acontecerá?
+                  </h3>
+                  <p className="text-sm text-twitter/80">
+                    • Buscaremos seus tweets mais recentes<br/>
+                    • Apagaremos cada tweet individualmente<br/>
+                    • O processo pode levar 5-10 minutos<br/>
+                    • Você pode acompanhar o progresso na próxima tela
+                  </p>
+                </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
-                  variant="destructive" 
-                  size="xl" 
-                  onClick={handleConfirm}
-                  className="w-full"
+                  variant="outline" 
+                  onClick={handleCancel}
+                  className="order-2 sm:order-1"
                 >
-                  <X className="w-5 h-5" />
-                  Sim, apagar 3.200 tweets permanentemente
+                  <ArrowLeft className="w-4 h-4" />
+                  Cancelar
                 </Button>
                 
                 <Button 
-                  variant="outline" 
-                  size="lg" 
-                  onClick={handleCancel}
-                  className="w-full"
+                  variant="destructive" 
+                  size="lg"
+                  onClick={handleConfirm}
+                  className="order-1 sm:order-2"
                 >
-                  Cancelar e voltar
+                  Sim, apagar tweets permanentemente
                 </Button>
               </div>
 
-              {/* Security Notice */}
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-4 border-t border-border/30">
-                <Shield className="w-3 h-3" />
-                <span>Seus dados não são armazenados em nossos servidores</span>
+              {/* Security Note */}
+              <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border/30">
+                <p>
+                  Após o processo, você pode revogar o acesso nas configurações do seu X
+                </p>
               </div>
             </div>
           </Card>

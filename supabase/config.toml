@@ -1,1 +1,13 @@
 project_id = "sxqnrwpncormychvgfzf"
+
+[functions.twitter-auth]
+verify_jwt = false
+
+[functions.twitter-callback]
+verify_jwt = false
+
+[functions.twitter-process]
+verify_jwt = false
+
+[functions.twitter-status]
+verify_jwt = false

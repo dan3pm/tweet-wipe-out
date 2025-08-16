@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      user_sessions: {
+        Row: {
+          access_token: string | null
+          access_token_secret: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          oauth_token: string | null
+          oauth_token_secret: string | null
+          profile_image_url: string | null
+          session_id: string
+          status: string | null
+          total_tweets: number | null
+          tweets_processed: number | null
+          updated_at: string
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_secret?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          oauth_token?: string | null
+          oauth_token_secret?: string | null
+          profile_image_url?: string | null
+          session_id: string
+          status?: string | null
+          total_tweets?: number | null
+          tweets_processed?: number | null
+          updated_at?: string
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          access_token_secret?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          oauth_token?: string | null
+          oauth_token_secret?: string | null
+          profile_image_url?: string | null
+          session_id?: string
+          status?: string | null
+          total_tweets?: number | null
+          tweets_processed?: number | null
+          updated_at?: string
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

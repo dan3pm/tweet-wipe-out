@@ -4,50 +4,79 @@ import { Loader2, Trash2, Shield, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+interface ProcessingStatus {
+  status: string;
+  progress: {
+    processed: number;
+    total: number;
+    percentage: number;
+  };
+  user: {
+    username: string;
+  };
+  errorMessage?: string;
+}
+
 const Processing = () => {
   const navigate = useNavigate();
-  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<ProcessingStatus | null>(null);
   const [currentStep, setCurrentStep] = useState("Conectando à API do X...");
 
-  // Simula o progresso da exclusão
   useEffect(() => {
-    const steps = [
-      { text: "Conectando à API do X...", duration: 2000 },
-      { text: "Buscando seus tweets...", duration: 3000 },
-      { text: "Excluindo tweets (isso pode demorar)...", duration: 8000 },
-      { text: "Finalizando processo...", duration: 2000 }
-    ];
+    const sessionId = localStorage.getItem('tweetwipe_session');
+    
+    if (!sessionId) {
+      navigate('/');
+      return;
+    }
 
-    let currentStepIndex = 0;
-    let currentProgress = 0;
-
-    const updateProgress = () => {
-      const step = steps[currentStepIndex];
-      const stepProgress = 100 / steps.length;
-      const targetProgress = (currentStepIndex + 1) * stepProgress;
-      
-      const interval = setInterval(() => {
-        currentProgress += 1;
-        setProgress(Math.min(currentProgress, targetProgress));
+    // Start polling for status
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(`/functions/v1/twitter-status?sessionId=${sessionId}`);
         
-        if (currentProgress >= targetProgress) {
-          clearInterval(interval);
-          currentStepIndex++;
-          
-          if (currentStepIndex < steps.length) {
-            setCurrentStep(steps[currentStepIndex].text);
-            setTimeout(updateProgress, 500);
-          } else {
-            // Processo completo - redirecionar para sucesso
-            setTimeout(() => navigate("/success"), 1000);
-          }
+        if (!response.ok) {
+          throw new Error('Failed to get status');
         }
-      }, step.duration / stepProgress);
+
+        const data = await response.json();
+        setStatus(data);
+
+        // Update current step based on status
+        switch (data.status) {
+          case 'processing':
+            if (data.progress.total === 0) {
+              setCurrentStep("Buscando seus tweets...");
+            } else if (data.progress.processed === 0) {
+              setCurrentStep(`Encontrados ${data.progress.total} tweets. Iniciando exclusão...`);
+            } else {
+              setCurrentStep(`Excluindo tweets (${data.progress.processed}/${data.progress.total})...`);
+            }
+            break;
+          case 'completed':
+            setCurrentStep("Processo concluído com sucesso!");
+            setTimeout(() => navigate("/success"), 2000);
+            break;
+          case 'error':
+            setCurrentStep(`Erro: ${data.errorMessage}`);
+            break;
+          default:
+            setCurrentStep("Conectando à API do X...");
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+        setCurrentStep("Erro ao verificar status");
+      }
     };
 
-    setCurrentStep(steps[0].text);
-    setTimeout(updateProgress, 1000);
+    // Poll every 2 seconds
+    const interval = setInterval(pollStatus, 2000);
+    pollStatus(); // Initial call
+
+    return () => clearInterval(interval);
   }, [navigate]);
+
+  const progress = status?.progress.percentage || 0;
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -76,6 +105,11 @@ const Processing = () => {
                 <p className="text-muted-foreground">
                   {currentStep}
                 </p>
+                {status?.user && (
+                  <p className="text-sm text-muted-foreground">
+                    Conta: @{status.user.username}
+                  </p>
+                )}
               </div>
 
               {/* Progress Bar */}
@@ -83,6 +117,11 @@ const Processing = () => {
                 <Progress value={progress} className="h-2" />
                 <p className="text-sm text-muted-foreground">
                   {Math.round(progress)}% concluído
+                  {status?.progress && status.progress.total > 0 && (
+                    <span className="ml-2">
+                      ({status.progress.processed}/{status.progress.total} tweets)
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -96,7 +135,8 @@ const Processing = () => {
                     </h3>
                     <p className="text-sm text-twitter/80">
                       Este processo pode levar alguns minutos. Não feche esta aba até 
-                      que o processo seja concluído completamente.
+                      que o processo seja concluído completamente. Respeitar os limites 
+                      da API do X é essencial para evitar bloqueios.
                     </p>
                   </div>
                 </div>
@@ -105,8 +145,12 @@ const Processing = () => {
               {/* Process Details */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div className="space-y-2">
-                  <div className="w-8 h-8 bg-twitter/10 rounded-full flex items-center justify-center mx-auto">
-                    <Trash2 className="w-4 h-4 text-twitter" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto ${
+                    status?.progress.total > 0 ? 'bg-success/10' : 'bg-twitter/10'
+                  }`}>
+                    <Trash2 className={`w-4 h-4 ${
+                      status?.progress.total > 0 ? 'text-success' : 'text-twitter'
+                    }`} />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Buscando tweets
@@ -114,8 +158,14 @@ const Processing = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="w-8 h-8 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
-                    <Loader2 className="w-4 h-4 text-destructive animate-spin" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto ${
+                    status?.status === 'processing' ? 'bg-destructive/10' : 'bg-muted'
+                  }`}>
+                    {status?.status === 'processing' ? (
+                      <Loader2 className="w-4 h-4 text-destructive animate-spin" />
+                    ) : (
+                      <Loader2 className="w-4 h-4 text-muted-foreground" />
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Processando exclusão
@@ -123,8 +173,12 @@ const Processing = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center mx-auto">
-                    <Shield className="w-4 h-4 text-muted-foreground" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto ${
+                    status?.status === 'completed' ? 'bg-success/10' : 'bg-muted'
+                  }`}>
+                    <Shield className={`w-4 h-4 ${
+                      status?.status === 'completed' ? 'text-success' : 'text-muted-foreground'
+                    }`} />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Finalização segura
