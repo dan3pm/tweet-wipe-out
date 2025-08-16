@@ -108,19 +108,21 @@ Deno.serve(async (req) => {
     );
 
     console.log('Exchanging tokens...');
+    console.log('OAuth Header:', oauthHeader);
     const response = await fetch(accessTokenUrl, {
       method: 'POST',
       headers: {
         'Authorization': oauthHeader,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `oauth_verifier=${oauthVerifier}`,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Token exchange error:', errorText);
-      throw new Error(`Failed to exchange tokens: ${response.status}`);
+      console.error('Token exchange error - Status:', response.status);
+      console.error('Token exchange error - Body:', errorText);
+      console.error('Token exchange error - Headers:', Object.fromEntries(response.headers.entries()));
+      throw new Error(`Failed to exchange tokens: ${response.status} - ${errorText}`);
     }
 
     const responseText = await response.text();

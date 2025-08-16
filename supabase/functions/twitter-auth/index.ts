@@ -69,22 +69,24 @@ Deno.serve(async (req) => {
     const callbackUrl = `${req.headers.get('origin')}/confirm`;
     
     const oauthHeader = generateOAuthHeader('POST', requestTokenUrl, {
-      oauth_callback: encodeURIComponent(callbackUrl)
+      oauth_callback: callbackUrl
     });
 
     console.log('Requesting token from Twitter...');
+    console.log('OAuth Header:', oauthHeader);
     const response = await fetch(requestTokenUrl, {
       method: 'POST',
       headers: {
         'Authorization': oauthHeader,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `oauth_callback=${encodeURIComponent(callbackUrl)}`,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Twitter API error:', errorText);
+      console.error('Twitter API error - Status:', response.status);
+      console.error('Twitter API error - Body:', errorText);
+      console.error('Twitter API error - Headers:', Object.fromEntries(response.headers.entries()));
       throw new Error(`Twitter API error: ${response.status} - ${errorText}`);
     }
 
@@ -114,8 +116,8 @@ Deno.serve(async (req) => {
       throw new Error('Failed to store session data');
     }
 
-    // Step 3: Return authorization URL
-    const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}&oauth_callback=${encodeURIComponent(callbackUrl)}`;
+    // Step 3: Return authorization URL (no oauth_callback needed here)
+    const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
     
     return new Response(JSON.stringify({ 
       authUrl,

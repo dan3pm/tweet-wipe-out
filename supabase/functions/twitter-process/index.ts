@@ -81,13 +81,16 @@ async function fetchTweets(userId: string, accessToken: string, accessTokenSecre
 
   const url = `${baseUrl}?${params.toString()}`;
   
+  // For OAuth signature, include query params as additional OAuth params
+  const queryParams = Object.fromEntries(params.entries());
   const oauthHeader = generateOAuthHeader(
     'GET',
-    url,
+    baseUrl, // Use base URL without query params for signature
     consumerSecret,
     accessTokenSecret,
     {
-      oauth_token: accessToken
+      oauth_token: accessToken,
+      ...queryParams // Include all query params in OAuth signature
     }
   );
 
@@ -101,7 +104,9 @@ async function fetchTweets(userId: string, accessToken: string, accessTokenSecre
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Failed to fetch tweets:', errorText);
+    console.error('Failed to fetch tweets - Status:', response.status);
+    console.error('Failed to fetch tweets - Body:', errorText);
+    console.error('Failed to fetch tweets - Headers:', Object.fromEntries(response.headers.entries()));
     throw new Error(`Failed to fetch tweets: ${response.status} - ${errorText}`);
   }
 
@@ -131,7 +136,9 @@ async function deleteTweet(tweetId: string, accessToken: string, accessTokenSecr
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Failed to delete tweet:', tweetId, errorText);
+    console.error('Failed to delete tweet - Status:', response.status);
+    console.error('Failed to delete tweet - Body:', errorText);
+    console.error('Failed to delete tweet ID:', tweetId);
     // Don't throw error for individual deletions to continue with the rest
     return { success: false, error: errorText };
   }
