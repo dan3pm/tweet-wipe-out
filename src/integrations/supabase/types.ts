@@ -70,7 +70,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      session_status_view: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          profile_image_url: string | null
+          session_id: string | null
+          status: string | null
+          total_tweets: number | null
+          tweets_processed: number | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          profile_image_url?: string | null
+          session_id?: string | null
+          status?: string | null
+          total_tweets?: number | null
+          tweets_processed?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          profile_image_url?: string | null
+          session_id?: string | null
+          status?: string | null
+          total_tweets?: number | null
+          tweets_processed?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_session_status: {
