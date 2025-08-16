@@ -3,18 +3,19 @@ import { Progress } from "@/components/ui/progress";
 import { Loader2, Trash2, Shield, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProcessingStatus {
   status: string;
+  tweets_processed: number;
+  total_tweets: number;
+  username: string;
+  error_message?: string;
   progress: {
     processed: number;
     total: number;
     percentage: number;
   };
-  user: {
-    username: string;
-  };
-  errorMessage?: string;
 }
 
 const Processing = () => {
@@ -30,27 +31,53 @@ const Processing = () => {
       return;
     }
 
-    // Start polling for status
+    // Start polling for status using secure database function
     const pollStatus = async () => {
       try {
-        const response = await fetch(`/functions/v1/twitter-status?sessionId=${sessionId}`);
+        const { data, error } = await supabase.rpc('get_session_status', {
+          session_id_param: sessionId
+        });
         
-        if (!response.ok) {
-          throw new Error('Failed to get status');
+        if (error) {
+          throw new Error(error.message);
         }
 
-        const data = await response.json();
-        setStatus(data);
+        if (!data) {
+          throw new Error('Session not found');
+        }
+        
+        // Type assertion since we know the structure from our function
+        const sessionData = data as any;
+        
+        // Calculate progress percentage
+        const progress = sessionData.total_tweets > 0 
+          ? Math.round((sessionData.tweets_processed / sessionData.total_tweets) * 100) 
+          : 0;
+        
+        const processedStatus: ProcessingStatus = {
+          status: sessionData.status,
+          tweets_processed: sessionData.tweets_processed || 0,
+          total_tweets: sessionData.total_tweets || 0,
+          username: sessionData.username,
+          error_message: sessionData.error_message,
+          progress: {
+            processed: sessionData.tweets_processed || 0,
+            total: sessionData.total_tweets || 0,
+            percentage: progress
+          }
+        };
+        
+        setStatus(processedStatus);
 
         // Update current step based on status
-        switch (data.status) {
+        switch (sessionData.status) {
           case 'processing':
-            if (data.progress.total === 0) {
+            if (sessionData.total_tweets === 0) {
               setCurrentStep("Buscando seus tweets...");
-            } else if (data.progress.processed === 0) {
-              setCurrentStep(`Encontrados ${data.progress.total} tweets. Iniciando exclusão...`);
+            } else if (sessionData.tweets_processed === 0) {
+              setCurrentStep(`Encontrados ${sessionData.total_tweets} tweets. Iniciando exclusão...`);
             } else {
-              setCurrentStep(`Excluindo tweets (${data.progress.processed}/${data.progress.total})...`);
+              setCurrentStep(`Excluindo tweets (${sessionData.tweets_processed}/${sessionData.total_tweets})...`);
             }
             break;
           case 'completed':
@@ -58,7 +85,7 @@ const Processing = () => {
             setTimeout(() => navigate("/success"), 2000);
             break;
           case 'error':
-            setCurrentStep(`Erro: ${data.errorMessage}`);
+            setCurrentStep(`Erro: ${sessionData.error_message}`);
             break;
           default:
             setCurrentStep("Conectando à API do X...");
@@ -105,9 +132,9 @@ const Processing = () => {
                 <p className="text-muted-foreground">
                   {currentStep}
                 </p>
-                {status?.user && (
+                {status?.username && (
                   <p className="text-sm text-muted-foreground">
-                    Conta: @{status.user.username}
+                    Conta: @{status.username}
                   </p>
                 )}
               </div>
@@ -145,11 +172,11 @@ const Processing = () => {
               {/* Process Details */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div className="space-y-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto ${
-                    status?.progress.total > 0 ? 'bg-success/10' : 'bg-twitter/10'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto ${
+                    status?.total_tweets > 0 ? 'bg-success/10' : 'bg-twitter/10'
                   }`}>
                     <Trash2 className={`w-4 h-4 ${
-                      status?.progress.total > 0 ? 'text-success' : 'text-twitter'
+                      status?.total_tweets > 0 ? 'text-success' : 'text-twitter'
                     }`} />
                   </div>
                   <p className="text-xs text-muted-foreground">

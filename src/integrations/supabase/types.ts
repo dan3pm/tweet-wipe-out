@@ -73,7 +73,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_session_status: {
+        Args: { session_id_param: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
