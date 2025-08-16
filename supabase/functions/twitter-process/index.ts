@@ -154,31 +154,32 @@ Deno.serve(async (req) => {
 
     console.log('Starting tweet processing for session:', sessionId);
 
-    // Get session from database
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('*')
-      .eq('session_id', sessionId)
-      .eq('status', 'authenticated')
-      .single();
+    // Get session from database using secure function
+    const { data: sessionData, error: sessionError } = await supabase.rpc('extensions.get_user_session_tokens', {
+      p_session_id: sessionId
+    });
 
-    if (sessionError || !session) {
+    if (sessionError || !sessionData) {
       console.error('Session error:', sessionError);
       throw new Error('Invalid or expired session');
     }
 
-    if (!session.access_token || !session.access_token_secret || !session.user_id) {
+    if (sessionData.status !== 'authenticated') {
+      throw new Error('Session not authenticated');
+    }
+
+    if (!sessionData.access_token || !sessionData.access_token_secret || !sessionData.user_id) {
       throw new Error('Missing access tokens or user ID');
     }
 
-    // Update status to processing
-    await supabase
-      .from('user_sessions')
-      .update({ status: 'processing' })
-      .eq('session_id', sessionId);
+    // Update status to processing using secure function
+    await supabase.rpc('extensions.update_user_session', {
+      p_session_id: sessionId,
+      p_status: 'processing'
+    });
 
     // Start background processing
-    EdgeRuntime.waitUntil(processAllTweets(session));
+    EdgeRuntime.waitUntil(processAllTweets(sessionData));
 
     return new Response(JSON.stringify({
       success: true,
@@ -198,8 +199,8 @@ Deno.serve(async (req) => {
   }
 });
 
-async function processAllTweets(session: any) {
-  const { session_id, access_token, access_token_secret, user_id } = session;
+async function processAllTweets(sessionData: any) {
+  const { session_id, access_token, access_token_secret, user_id } = sessionData;
   
   try {
     console.log('Starting tweet processing for user:', user_id);
@@ -223,11 +224,11 @@ async function processAllTweets(session: any) {
         
         console.log(`Fetched ${response.data.length} tweets, total: ${totalFetched}`);
         
-        // Update total count in database
-        await supabase
-          .from('user_sessions')
-          .update({ total_tweets: totalFetched })
-          .eq('session_id', session_id);
+        // Update total count in database using secure function
+        await supabase.rpc('extensions.update_user_session', {
+          p_session_id: session_id,
+          p_total_tweets: totalFetched
+        });
         
         // Check for pagination
         paginationToken = response.meta?.next_token;
@@ -248,11 +249,11 @@ async function processAllTweets(session: any) {
     
     console.log(`Total tweets fetched: ${allTweets.length}`);
     
-    // Update total tweets count
-    await supabase
-      .from('user_sessions')
-      .update({ total_tweets: allTweets.length })
-      .eq('session_id', session_id);
+    // Update total tweets count using secure function
+    await supabase.rpc('extensions.update_user_session', {
+      p_session_id: session_id,
+      p_total_tweets: allTweets.length
+    });
     
     // Delete tweets in batches
     let processed = 0;
@@ -269,11 +270,11 @@ async function processAllTweets(session: any) {
       const results = await Promise.allSettled(deletionPromises);
       processed += results.length;
       
-      // Update progress
-      await supabase
-        .from('user_sessions')
-        .update({ tweets_processed: processed })
-        .eq('session_id', session_id);
+      // Update progress using secure function
+      await supabase.rpc('extensions.update_user_session', {
+        p_session_id: session_id,
+        p_tweets_processed: processed
+      });
       
       console.log(`Processed ${processed}/${allTweets.length} tweets`);
       
@@ -283,27 +284,23 @@ async function processAllTweets(session: any) {
       }
     }
     
-    // Mark as completed
-    await supabase
-      .from('user_sessions')
-      .update({ 
-        status: 'completed',
-        tweets_processed: processed 
-      })
-      .eq('session_id', session_id);
+    // Mark as completed using secure function
+    await supabase.rpc('extensions.update_user_session', {
+      p_session_id: session_id,
+      p_status: 'completed',
+      p_tweets_processed: processed
+    });
     
     console.log(`Completed processing ${processed} tweets for session ${session_id}`);
     
   } catch (error: any) {
     console.error('Error processing tweets:', error);
     
-    // Mark as error
-    await supabase
-      .from('user_sessions')
-      .update({ 
-        status: 'error',
-        error_message: error.message 
-      })
-      .eq('session_id', session_id);
+    // Mark as error using secure function
+    await supabase.rpc('extensions.update_user_session', {
+      p_session_id: session_id,
+      p_status: 'error',
+      p_error_message: error.message
+    });
   }
 }

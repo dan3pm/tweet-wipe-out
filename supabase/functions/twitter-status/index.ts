@@ -25,12 +25,10 @@ Deno.serve(async (req) => {
 
     console.log('Getting status for session:', sessionId);
 
-    // Get session status from database
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('*')
-      .eq('session_id', sessionId)
-      .single();
+    // Get session status from database using secure public function
+    const { data: session, error: sessionError } = await supabase.rpc('get_session_status', {
+      session_id_param: sessionId
+    });
 
     if (sessionError || !session) {
       console.error('Session error:', sessionError);

@@ -99,17 +99,15 @@ Deno.serve(async (req) => {
       throw new Error('Failed to get OAuth tokens from Twitter');
     }
 
-    // Step 2: Generate session ID and store tokens
+    // Step 2: Generate session ID and store tokens using encrypted storage
     const sessionId = crypto.randomUUID();
     
-    const { error: dbError } = await supabase
-      .from('user_sessions')
-      .insert({
-        session_id: sessionId,
-        oauth_token: oauthToken,
-        oauth_token_secret: oauthTokenSecret,
-        status: 'pending'
-      });
+    const { error: dbError } = await supabase.rpc('extensions.create_user_session', {
+      p_session_id: sessionId,
+      p_oauth_token: oauthToken,
+      p_oauth_token_secret: oauthTokenSecret,
+      p_status: 'pending'
+    });
 
     if (dbError) {
       console.error('Database error:', dbError);

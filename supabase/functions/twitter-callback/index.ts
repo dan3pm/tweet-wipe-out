@@ -78,17 +78,19 @@ Deno.serve(async (req) => {
 
     console.log('Processing callback for session:', sessionId);
 
-    // Get session from database
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('*')
-      .eq('session_id', sessionId)
-      .eq('oauth_token', oauthToken)
-      .single();
+    // Get session from database using secure function
+    const { data: sessionData, error: sessionError } = await supabase.rpc('extensions.get_user_session_tokens', {
+      p_session_id: sessionId
+    });
 
-    if (sessionError || !session) {
+    if (sessionError || !sessionData) {
       console.error('Session error:', sessionError);
       throw new Error('Invalid session');
+    }
+
+    // Verify OAuth token matches
+    if (sessionData.oauth_token !== oauthToken) {
+      throw new Error('OAuth token mismatch');
     }
 
     // Step 1: Exchange request token for access token
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
       'POST', 
       accessTokenUrl, 
       consumerSecret, 
-      session.oauth_token_secret,
+      sessionData.oauth_token_secret,
       {
         oauth_token: oauthToken,
         oauth_verifier: oauthVerifier
@@ -161,18 +163,16 @@ Deno.serve(async (req) => {
       console.log('User data:', userData);
     }
 
-    // Step 3: Update session with access tokens and user info
-    const { error: updateError } = await supabase
-      .from('user_sessions')
-      .update({
-        access_token: accessToken,
-        access_token_secret: accessTokenSecret,
-        user_id: userId,
-        username: screenName,
-        profile_image_url: profileImageUrl,
-        status: 'authenticated'
-      })
-      .eq('session_id', sessionId);
+    // Step 3: Update session with access tokens and user info using secure function
+    const { error: updateError } = await supabase.rpc('extensions.update_user_session', {
+      p_session_id: sessionId,
+      p_access_token: accessToken,
+      p_access_token_secret: accessTokenSecret,
+      p_user_id: userId,
+      p_username: screenName,
+      p_profile_image_url: profileImageUrl,
+      p_status: 'authenticated'
+    });
 
     if (updateError) {
       console.error('Update error:', updateError);
