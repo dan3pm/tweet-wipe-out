@@ -1,82 +1,17 @@
-// NENHUMA DEPENDÊNCIA EXTERNA DE CRIPTOGRAFIA NECESSÁRIA
-
-const consumerKey = Deno.env.get('TWITTER_CONSUMER_KEY')!;
-const consumerSecret = Deno.env.get('TWITTER_CONSUMER_SECRET')!;
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// --- FUNÇÃO DE ASSINATURA REESCRITA USANDO A WEB CRYPTO API (PADRÃO MODERNO) ---
-async function generateOAuthSignature(
-  method: string,
-  url: string,
-  params: Record<string, string>,
-  consumerSecret: string,
-  tokenSecret: string = ''
-): Promise<string> {
-  const signatureBaseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(
-    Object.entries(params)
-      .sort()
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-      .join('&')
-  )}`;
-  
-  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
-  
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(signingKey),
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"]
-  );
-  
-  const signatureBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(signatureBaseString)
-  );
-  
-  // Converte o resultado para Base64
-  const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
-  
-  return signature;
-}
-
-// --- FUNÇÃO PRINCIPAL AGORA É 'async' PARA AGUARDAR A ASSINATURA ---
-async function generateOAuthHeader(method: string, url: string, additionalParams: Record<string, string> = {}): Promise<string> {
-  const oauthParams = {
-    oauth_consumer_key: consumerKey,
-    oauth_nonce: Math.random().toString(36).substring(2),
-    oauth_signature_method: 'HMAC-SHA1',
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_version: '1.0',
-    ...additionalParams,
-  };
-
-  const signature = await generateOAuthSignature(method, url, oauthParams, consumerSecret);
-  
-  const signedOAuthParams = { ...oauthParams, oauth_signature: signature };
-  
-  const entries = Object.entries(signedOAuthParams).sort((a, b) => a[0].localeCompare(b[0]));
-  
-  return 'OAuth ' + entries
-    .map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`)
-    .join(', ');
-}
-
-Deno.serve(async (req) => {
+// FORMATO CORRETO PARA VERCEL
+export default async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const requestTokenUrl = 'https://api.twitter.com/oauth/request_token';
-    const callbackUrl = `${req.headers.get('origin')}/confirm`;
-    
-    // Agora precisamos usar 'await' aqui porque a função ficou assíncrona
+    // O 'origin' vem do cabeçalho da requisição
+    const origin = req.headers.get('origin'); 
+    const callbackUrl = `${origin}/confirm`;
+
+    console.log(`Callback URL gerado: ${callbackUrl}`); // <--- Adicione este log!
+
     const oauthHeader = await generateOAuthHeader('POST', requestTokenUrl, {
       oauth_callback: callbackUrl
     });
@@ -102,11 +37,9 @@ Deno.serve(async (req) => {
 
     const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
     
-    // REMOVEMOS A PARTE DO SUPABASE DAQUI PARA SIMPLIFICAR O TESTE INICIAL
-    // O objetivo agora é apenas ser redirecionado para o Twitter com sucesso.
-    
     return new Response(JSON.stringify({ authUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200
     });
 
   } catch (error: any) {
@@ -116,4 +49,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+};
