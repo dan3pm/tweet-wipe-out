@@ -7,6 +7,17 @@ const consumerKey = Deno.env.get('TWITTER_CONSUMER_KEY')!;
 const consumerSecret = Deno.env.get('TWITTER_CONSUMER_SECRET')!;
 
 function validateEnvironmentVariables() {
+  // Debug: List all available environment variables
+  console.log('=== ENVIRONMENT VARIABLES DEBUG ===');
+  console.log('Available Deno.env keys:', Object.keys(Deno.env.toObject()));
+  console.log('SUPABASE_URL:', supabaseUrl ? 'SET' : 'MISSING');
+  console.log('SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? 'SET' : 'MISSING');
+  console.log('TWITTER_CONSUMER_KEY raw value:', JSON.stringify(Deno.env.get('TWITTER_CONSUMER_KEY')));
+  console.log('TWITTER_CONSUMER_SECRET raw value:', JSON.stringify(Deno.env.get('TWITTER_CONSUMER_SECRET')));
+  console.log('consumerKey processed:', JSON.stringify(consumerKey));
+  console.log('consumerSecret processed:', JSON.stringify(consumerSecret));
+  console.log('===================================');
+  
   const missing = [];
   
   if (!supabaseUrl) missing.push('SUPABASE_URL');
@@ -15,6 +26,7 @@ function validateEnvironmentVariables() {
   if (!consumerSecret || consumerSecret.trim() === '') missing.push('TWITTER_CONSUMER_SECRET');
   
   if (missing.length > 0) {
+    console.error('Missing environment variables:', missing);
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
   
