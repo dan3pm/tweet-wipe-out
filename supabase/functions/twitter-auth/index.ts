@@ -121,7 +121,20 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate environment variables first
+    // Debug: Show ALL environment variables first
+    console.log('=== COMPLETE ENVIRONMENT DEBUG ===');
+    const allEnvVars = Deno.env.toObject();
+    console.log('Total env vars count:', Object.keys(allEnvVars).length);
+    for (const [key, value] of Object.entries(allEnvVars)) {
+      if (key.includes('TWITTER') || key.includes('SUPABASE')) {
+        console.log(`${key}: ${value ? (key.includes('SECRET') ? '***' + value.slice(-4) : value) : 'UNDEFINED'}`);
+      }
+    }
+    console.log('Raw TWITTER_CONSUMER_KEY:', Deno.env.get('TWITTER_CONSUMER_KEY'));
+    console.log('Raw TWITTER_CONSUMER_SECRET:', Deno.env.get('TWITTER_CONSUMER_SECRET'));
+    console.log('================================');
+
+    // Validate environment variables
     validateEnvironmentVariables();
 
     // Step 1: Get request token from Twitter
