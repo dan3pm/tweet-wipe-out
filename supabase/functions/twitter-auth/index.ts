@@ -149,20 +149,26 @@ Deno.serve(async (req) => {
       throw new Error('Failed to get OAuth tokens from Twitter');
     }
 
-    // Step 2: Generate session ID and store tokens using encrypted storage
+    // Step 2: Generate session ID and store tokens directly in user_sessions table
     const sessionId = crypto.randomUUID();
     
-    const { error: dbError } = await supabase.rpc('extensions.create_user_session', {
-      p_session_id: sessionId,
-      p_oauth_token: oauthToken,
-      p_oauth_token_secret: oauthTokenSecret,
-      p_status: 'pending'
-    });
+    console.log('Storing session data for sessionId:', sessionId);
+    
+    const { error: dbError } = await supabase
+      .from('user_sessions')
+      .insert({
+        session_id: sessionId,
+        oauth_token: oauthToken,
+        oauth_token_secret: oauthTokenSecret,
+        status: 'pending'
+      });
 
     if (dbError) {
-      console.error('Database error:', dbError);
+      console.error('Database error inserting session:', dbError);
       throw new Error('Failed to store session data');
     }
+    
+    console.log('✓ Session data stored successfully');
 
     // Step 3: Return authorization URL (no oauth_callback needed here)
     const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
