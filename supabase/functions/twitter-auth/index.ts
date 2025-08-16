@@ -35,16 +35,35 @@ function generateOAuthSignature(
   consumerSecret: string,
   tokenSecret: string = ''
 ): string {
-  const signatureBaseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(
-    Object.entries(params)
-      .sort()
-      .map(([k, v]) => `${k}=${v}`)
-      .join('&')
-  )}`;
+  // Step 1: Percent encode keys and values separately
+  const encodedParams = Object.entries(params)
+    .map(([key, value]) => [encodeURIComponent(key), encodeURIComponent(value)])
+    .sort(([a], [b]) => a.localeCompare(b)); // Sort by encoded keys
   
+  // Step 2: Create parameter string
+  const parameterString = encodedParams
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+  
+  // Step 3: Create signature base string
+  const signatureBaseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(parameterString)}`;
+  
+  // Step 4: Create signing key
   const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
+  
+  // Step 5: Generate signature
   const hmacSha1 = createHmac('sha1', signingKey);
   const signature = hmacSha1.update(signatureBaseString).digest('base64');
+  
+  // Add debug logging (with masked secrets)
+  console.log('OAuth Signature Debug:');
+  console.log('- Method:', method);
+  console.log('- URL:', url);
+  console.log('- Parameter String:', parameterString);
+  console.log('- Signature Base String:', signatureBaseString);
+  console.log('- Consumer Secret (masked):', consumerSecret ? '***' + consumerSecret.slice(-4) : 'EMPTY');
+  console.log('- Token Secret (masked):', tokenSecret ? '***' + tokenSecret.slice(-4) : 'EMPTY');
+  console.log('- Generated Signature:', signature);
   
   return signature;
 }
@@ -59,6 +78,13 @@ function generateOAuthHeader(method: string, url: string, additionalParams: Reco
     ...additionalParams,
   };
 
+  // Debug log parameters (with masked consumer key)
+  console.log('OAuth Parameters:');
+  console.log('- Consumer Key (masked):', consumerKey ? '***' + consumerKey.slice(-4) : 'EMPTY');
+  console.log('- Nonce:', oauthParams.oauth_nonce);
+  console.log('- Timestamp:', oauthParams.oauth_timestamp);
+  console.log('- Additional Params:', additionalParams);
+
   const signature = generateOAuthSignature(method, url, oauthParams, consumerSecret);
   
   const signedOAuthParams = {
@@ -68,9 +94,13 @@ function generateOAuthHeader(method: string, url: string, additionalParams: Reco
 
   const entries = Object.entries(signedOAuthParams).sort((a, b) => a[0].localeCompare(b[0]));
   
-  return 'OAuth ' + entries
+  const authHeader = 'OAuth ' + entries
     .map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`)
     .join(', ');
+  
+  console.log('Generated OAuth Header:', authHeader);
+  
+  return authHeader;
 }
 
 Deno.serve(async (req) => {
