@@ -3,7 +3,6 @@ import { Progress } from "@/components/ui/progress";
 import { Loader2, Trash2, Shield, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ProcessingStatus {
   status: string;
@@ -34,62 +33,22 @@ const Processing = () => {
     // Start polling for status using secure database function
     const pollStatus = async () => {
       try {
-        const { data, error } = await supabase.rpc('get_session_status', {
-          session_id_param: sessionId
-        });
-        
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        if (!data) {
-          throw new Error('Session not found');
-        }
-        
-        // Type assertion since we know the structure from our function
-        const sessionData = data as any;
-        
-        // Calculate progress percentage
-        const progress = sessionData.total_tweets > 0 
-          ? Math.round((sessionData.tweets_processed / sessionData.total_tweets) * 100) 
-          : 0;
+        setCurrentStep("Funcionalidade removida. Esta versão não conecta com serviços externos.");
         
         const processedStatus: ProcessingStatus = {
-          status: sessionData.status,
-          tweets_processed: sessionData.tweets_processed || 0,
-          total_tweets: sessionData.total_tweets || 0,
-          username: sessionData.username,
-          error_message: sessionData.error_message,
+          status: 'error',
+          tweets_processed: 0,
+          total_tweets: 0,
+          username: 'N/A',
+          error_message: 'Funcionalidade removida',
           progress: {
-            processed: sessionData.tweets_processed || 0,
-            total: sessionData.total_tweets || 0,
-            percentage: progress
+            processed: 0,
+            total: 100,
+            percentage: 0
           }
         };
         
         setStatus(processedStatus);
-
-        // Update current step based on status
-        switch (sessionData.status) {
-          case 'processing':
-            if (sessionData.total_tweets === 0) {
-              setCurrentStep("Buscando seus tweets...");
-            } else if (sessionData.tweets_processed === 0) {
-              setCurrentStep(`Encontrados ${sessionData.total_tweets} tweets. Iniciando exclusão...`);
-            } else {
-              setCurrentStep(`Excluindo tweets (${sessionData.tweets_processed}/${sessionData.total_tweets})...`);
-            }
-            break;
-          case 'completed':
-            setCurrentStep("Processo concluído com sucesso!");
-            setTimeout(() => navigate("/success"), 2000);
-            break;
-          case 'error':
-            setCurrentStep(`Erro: ${sessionData.error_message}`);
-            break;
-          default:
-            setCurrentStep("Conectando à API do X...");
-        }
       } catch (error) {
         console.error('Error polling status:', error);
         setCurrentStep("Erro ao verificar status");

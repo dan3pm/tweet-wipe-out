@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Shield, X, ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
 const Confirm = () => {
   const navigate = useNavigate();
@@ -18,34 +17,7 @@ const Confirm = () => {
 
   const handleCallback = async () => {
     try {
-      const oauthToken = searchParams.get('oauth_token');
-      const oauthVerifier = searchParams.get('oauth_verifier');
-      const sessionId = localStorage.getItem('tweetwipe_session');
-
-      if (!oauthToken || !oauthVerifier || !sessionId) {
-        throw new Error('Missing OAuth parameters');
-      }
-
-      console.log('Processing OAuth callback...');
-
-      const { data, error } = await supabase.functions.invoke('twitter-callback', {
-        body: {
-          oauthToken,
-          oauthVerifier,
-          sessionId
-        }
-      });
-
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(error.message || 'Failed to process OAuth callback');
-      }
-
-      if (data?.user) {
-        setUser(data.user);
-      } else {
-        throw new Error('Failed to get user data');
-      }
+      setError('Funcionalidade de autenticação removida. Esta versão não conecta com serviços externos.');
     } catch (error: any) {
       console.error('Error processing callback:', error);
       setError(error.message);
@@ -56,25 +28,7 @@ const Confirm = () => {
 
   const handleConfirm = async () => {
     try {
-      const sessionId = localStorage.getItem('tweetwipe_session');
-      
-      if (!sessionId) {
-        throw new Error('Missing session ID');
-      }
-
-      console.log('Starting tweet processing...');
-
-      const { data, error } = await supabase.functions.invoke('twitter-process', {
-        body: { sessionId }
-      });
-
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(error.message || 'Failed to start processing');
-      }
-
-      // Redirect to processing page
-      navigate('/processing');
+      alert('Funcionalidade de processamento removida. Esta versão não conecta com serviços externos.');
     } catch (error: any) {
       console.error('Error starting processing:', error);
       alert(`Erro ao iniciar o processamento: ${error.message || 'Tente novamente.'}`);

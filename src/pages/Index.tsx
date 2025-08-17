@@ -2,44 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Shield, Trash2, Twitter, X } from "lucide-react";
 import heroIllustration from "@/assets/hero-illustration.jpg";
-import { supabase } from "@/integrations/supabase/client";
+
 const Index = () => {
-  // Adicione estas duas linhas no topo do arquivo, junto com os outros 'import'
-import { supabase } from '@/integrations/supabase/client';
-import { FunctionsHttpError } from '@supabase/supabase-js';
-
-// Esta é a nova função completa que substitui a 'handleConnect' antiga
-async function handleConnect() {
-  console.log('Iniciando a chamada para a função no Supabase...');
-  
-  const { data, error } = await supabase.functions.invoke('twitter-auth');
-
-  if (error) {
-    console.error('A chamada para a função do Supabase falhou. Erro original:', error);
-    
-    if (error instanceof FunctionsHttpError) {
-      try {
-        const errorMessage = await error.context.json();
-        console.error('ERRO DETALHADO (lido pelo front-end):', errorMessage);
-        alert(`Erro retornado pelo servidor: ${errorMessage.message || JSON.stringify(errorMessage)}`);
-      } catch (e) {
-        const errorText = await error.context.text();
-        console.error('A resposta do erro não era JSON:', errorText);
-        alert(`Ocorreu um erro no servidor: ${errorText}`);
-      }
-    } else {
-      // Outros tipos de erro (ex: de rede)
-      alert(`Erro inesperado: ${error.message}`);
-    }
-    return; // Para a execução aqui
-  }
-  
-  // Se chegasse aqui, significaria sucesso
-  console.log('Função executada com sucesso!', data);
-  if (data && data.authUrl) {
-    window.location.href = data.authUrl;
-  }
-}
+  const handleConnect = async () => {
+    alert('Funcionalidade de conexão com Twitter removida. Esta versão não conecta com serviços externos.');
+  };
   return <div className="min-h-screen bg-gradient-subtle">
       {/* Hero Section */}
       <main className="container mx-auto px-4 py-16">
